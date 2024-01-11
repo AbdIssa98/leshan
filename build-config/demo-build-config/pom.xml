@@ -32,6 +32,7 @@ Contributors:
   <properties>
     <node-version>v18.13.0</node-version>
     <yarn-version>v1.22.19</yarn-version>
+    <npm-version>9.2.0</npm-version>
   </properties>
 
   <build>
@@ -67,28 +68,28 @@ Contributors:
           <configuration>
             <workingDirectory>webapp</workingDirectory>
             <nodeVersion>${node-version}</nodeVersion>
-            <yarnVersion>${yarn-version}</yarnVersion>
+            <npmVersion>${npm-version}</npmVersion>
           </configuration>
           <executions>
             <execution>
               <?m2e ignore?>
-              <id>install node and yarn</id>
+              <id>install node and npm</id>
               <goals>
-                <goal>install-node-and-yarn</goal>
+                <goal>install-node-and-npm</goal>
               </goals>
             </execution>
             <execution>
               <?m2e ignore?>
-              <id>yarn install</id>
+              <id>npm install</id>
               <goals>
-                <goal>yarn</goal>
+                <goal>npm</goal>
               </goals>
             </execution>
             <execution>
               <?m2e ignore?>
-              <id>yarn build</id>
+              <id>npm build</id>
               <goals>
-                <goal>yarn</goal>
+                <goal>npm</goal>
               </goals>
               <configuration>
                 <environmentVariables>
@@ -98,7 +99,7 @@ Contributors:
                   <VITE_APP_COMMIT_ID>${buildNumber}</VITE_APP_COMMIT_ID>
                   <VITE_APP_VERSION>${project.version}</VITE_APP_VERSION>
                 </environmentVariables>
-                <arguments>build</arguments>
+                <arguments>run build</arguments>
               </configuration>
             </execution>
           </executions>
@@ -109,6 +110,7 @@ Contributors:
 
   <profiles>
     <profile>
+      <!-- TODO update to cache npm instead of yarn -->
       <id>eclipseJenkins</id>
       <properties>
         <download-eclipse-path>/home/data/httpd/download.eclipse.org/leshan/</download-eclipse-path>
