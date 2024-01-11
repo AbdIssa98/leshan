@@ -30,9 +30,8 @@ Contributors:
   <description>Shared Maven configuration for all Leshan demos</description>
 
   <properties>
-    <node-version>v18.13.0</node-version>
+    <node-version>v21.5.0</node-version>
     <yarn-version>v1.22.19</yarn-version>
-    <npm-version>9.2.0</npm-version>
   </properties>
 
   <build>
@@ -68,7 +67,6 @@ Contributors:
           <configuration>
             <workingDirectory>webapp</workingDirectory>
             <nodeVersion>${node-version}</nodeVersion>
-            <npmVersion>${npm-version}</npmVersion>
           </configuration>
           <executions>
             <execution>
