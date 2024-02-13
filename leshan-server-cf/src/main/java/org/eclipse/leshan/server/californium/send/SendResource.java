@@ -35,6 +35,8 @@ import org.eclipse.leshan.server.profile.ClientProfile;
 import org.eclipse.leshan.server.profile.ClientProfileProvider;
 import org.eclipse.leshan.server.request.UplinkRequestReceiver;
 
+import com.upokecenter.cbor.CBORObject;
+
 /**
  * A CoAP Resource used to handle "Send" request sent by LWM2M devices.
  *
@@ -57,18 +59,31 @@ public class SendResource extends LwM2mCoapResource {
     public void handlePOST(CoapExchange exchange) {
         Request coapRequest = exchange.advanced().getRequest();
         IpPeer sender = getForeignPeerIdentity(exchange.advanced(), coapRequest);
-        ClientProfile clientProfile = profileProvider.getProfile(sender.getIdentity());
-
-        // check we have a registration for this identity
+        String payloadString = new String(coapRequest.getPayload());
+        LOGGER.debug("coap send request received. paylod: [{}] ", payloadString);
+        ContentFormat contentFormat = ContentFormat.fromCode(exchange.getRequestOptions().getContentFormat());
+        String prefix;
+        if (contentFormat == ContentFormat.SENML_CBOR) {
+            CBORObject cborObject = CBORObject.DecodeFromBytes(coapRequest.getPayload());
+            CBORObject innerObject = cborObject.getValues().iterator().next();
+            if (innerObject.ContainsKey(-2)) {
+                prefix = getPrefixFromCBORPayload(innerObject.get(-2).AsString());
+            } else {
+                prefix = null;
+            }
+        } else {
+            prefix = getPrefixFromPayload(payloadString);
+        }
+        ClientProfile clientProfile = profileProvider.getProfile(sender.getIdentity(), prefix);
         if (clientProfile == null) {
             exchange.respond(ResponseCode.BAD_REQUEST, "no registration found");
             return;
         }
+        LOGGER.debug("the extracted registration belongs to the end point:", clientProfile.getEndpoint());
 
         try {
             // Decode payload
-            byte[] payload = exchange.getRequestPayload();
-            ContentFormat contentFormat = ContentFormat.fromCode(exchange.getRequestOptions().getContentFormat());
+            byte[] payload = coapRequest.getPayload();
             if (!decoder.isSupported(contentFormat)) {
                 exchange.respond(ResponseCode.BAD_REQUEST, "Unsupported content format");
                 receiver.onError(sender, clientProfile,
@@ -80,7 +95,6 @@ public class SendResource extends LwM2mCoapResource {
 
             TimestampedLwM2mNodes data = decoder.decodeTimestampedNodes(payload, contentFormat,
                     clientProfile.getModel());
-
             // Handle "send op request
             SendRequest sendRequest = new SendRequest(contentFormat, data, coapRequest);
             SendableResponse<SendResponse> sendableResponse = receiver.requestReceived(sender, clientProfile,
@@ -107,5 +121,61 @@ public class SendResource extends LwM2mCoapResource {
             receiver.onError(sender, clientProfile, e, SendRequest.class, exchange.advanced().getEndpoint().getUri());
             throw e;
         }
+    }
+
+    // extract prefix if it is present in the payload string
+    private String getPrefixFromPayload(String payload) {
+        String bnKey = "\"bn\":\"";
+        int bnIndex = payload.indexOf(bnKey);
+        if (bnIndex != -1) {
+            int start = bnIndex + bnKey.length();
+            int end = payload.indexOf("\"", start);
+            if (end != -1) {
+                String extractedString = payload.substring(start, end);
+                String[] parts = extractedString.split("/");
+                if (parts.length > 0) {
+                    if (parts[0].matches(".*[^0-9].*")) {
+                        return parts[0];
+                    }
+                }
+            }
+        }
+        return null;
+    }
+
+    private String getPrefixFromCBORPayload(String payload) {
+        String trimmedPath = payload.trim();
+        String[] seperatedPath = trimmedPath.split("/");
+        if (seperatedPath.length > 1) {
+            return seperatedPath[1];
+        } else {
+            return "Invalid input";
+        }
+        // Parse the JSON string into a JSON array
+        // ObjectMapper objectMapper = new ObjectMapper();
+        // try {
+        // JsonNode jsonArray = objectMapper.readTree(payload);
+        // LOGGER.debug("the jsonarray made from the cbor object is: [{}]", jsonArray);
+        // // Check if the array is not empty
+        // if (jsonArray.isArray() && jsonArray.size() > 0) {
+        // JsonNode firstObject = jsonArray.get(0);
+
+        // // Check if the first object contains the key -2
+        // if (firstObject.has("-2")) {
+        // String valueAfterMinus2 = firstObject.get("-2").textValue();
+        // String extract = valueAfterMinus2.replaceAll("^/|/$", "");
+        // String[] parts = extract.split("/");
+        // if (parts.length > 1) {
+        // return parts[0];
+        // } else {
+        // return "Invalid input";
+        // }
+        // // Extract the part after -2
+        // }
+
+        // }
+        // } catch (Exception e) {
+        // LOGGER.error("[{}]", e);
+        // }
     }
 }

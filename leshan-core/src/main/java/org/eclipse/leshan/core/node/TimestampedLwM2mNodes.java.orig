@@ -130,7 +130,11 @@ public class TimestampedLwM2mNodes {
 
         private final List<InternalNode> nodes = new ArrayList<>();
         private boolean noDuplicate = true;
+<<<<<<< Updated upstream
+=======
+        private final List<LwM2mPath> paths;
         private String prefix = null;
+>>>>>>> Stashed changes
 
         public Builder raiseExceptionOnDuplicate(boolean raiseException) {
             noDuplicate = raiseException;
@@ -156,7 +160,7 @@ public class TimestampedLwM2mNodes {
             return this;
         }
 
-        public Builder putPrefix(String prefix) {
+        public Builder putPrefix(String prefix){
             this.prefix = prefix;
             return this;
         }
@@ -205,7 +209,22 @@ public class TimestampedLwM2mNodes {
                     }
                 }
             }
+<<<<<<< Updated upstream
+            return new TimestampedLwM2mNodes(timestampToPathToNode);
+=======
+
+            // When paths is provided, validate there is not missing path
+            if (paths != null) {
+                timestampToPathToNode.forEach((timestamp, pathToNodes) -> {
+                    if (!pathToNodes.keySet().containsAll(paths)) {
+                        throw new IllegalArgumentException(String.format(
+                                "Unable to create TimestampedLwM2mNodes : Some path are missing for timestamp %s, expected %s but get %s.",
+                                timestamp, paths, pathToNodes.keySet()));
+                    }
+                });
+            }
             return new TimestampedLwM2mNodes(timestampToPathToNode, prefix);
+>>>>>>> Stashed changes
         }
 
         private static Comparator<Instant> getTimestampComparator() {

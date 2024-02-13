@@ -20,4 +20,6 @@ import org.eclipse.leshan.core.peer.LwM2mIdentity;
 public interface ClientProfileProvider {
 
     ClientProfile getProfile(LwM2mIdentity identity);
+
+    ClientProfile getProfile(LwM2mIdentity parentIdentity, String prefix);
 }

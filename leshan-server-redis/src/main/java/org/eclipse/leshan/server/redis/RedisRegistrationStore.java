@@ -165,11 +165,12 @@ public class RedisRegistrationStore implements RegistrationStore, Startable, Sto
                 // add registration: secondary indexes
                 byte[] regid_idx = toRegIdKey(registration.getId());
                 j.set(regid_idx, registration.getEndpoint().getBytes(UTF_8));
-                byte[] addr_idx = toRegAddrKey(registration.getSocketAddress());
-                j.set(addr_idx, registration.getEndpoint().getBytes(UTF_8));
-                byte[] identity_idx = toRegIdentityKey(registration.getClientTransportData().getIdentity());
-                j.set(identity_idx, registration.getEndpoint().getBytes(UTF_8));
-
+                if (registration.getRootPath() == null || registration.getRootPath().replace("/", "").isEmpty()) {
+                    byte[] addr_idx = toRegAddrKey(registration.getSocketAddress());
+                    j.set(addr_idx, registration.getEndpoint().getBytes(UTF_8));
+                    byte[] identity_idx = toRegIdentityKey(registration.getClientTransportData().getIdentity());
+                    j.set(identity_idx, registration.getEndpoint().getBytes(UTF_8));
+                }
                 // Add or update expiration
                 addOrUpdateExpiration(j, registration);
 

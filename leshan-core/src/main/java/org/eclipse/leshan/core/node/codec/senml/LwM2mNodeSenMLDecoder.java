@@ -27,6 +27,8 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.SortedMap;
 import java.util.TreeMap;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import org.eclipse.leshan.core.link.LinkParser;
 import org.eclipse.leshan.core.link.lwm2m.DefaultLwM2mLinkParser;
@@ -134,10 +136,13 @@ public class LwM2mNodeSenMLDecoder implements TimestampedNodeDecoder, MultiNodeD
                 for (LwM2mPath path : paths) {
                     Collection<LwM2mResolvedSenMLRecord> records = recordsByPath.get(path);
                     if (records.isEmpty()) {
-                        // Node can be null as the LWM2M specification says that "Read-Composite operation is
-                        // treated as non-atomic and handled as best effort by the client. That is, if any of the
+                        // Node can be null as the LWM2M specification says that "Read-Composite
+                        // operation is
+                        // treated as non-atomic and handled as best effort by the client. That is, if
+                        // any of the
                         // requested
-                        // resources do not have a valid value to return, they will not be included in the response".
+                        // resources do not have a valid value to return, they will not be included in
+                        // the response".
                         // Meaning that a given path could have no corresponding value.
                         nodes.put(path, null);
                     } else {
@@ -148,7 +153,8 @@ public class LwM2mNodeSenMLDecoder implements TimestampedNodeDecoder, MultiNodeD
                 }
             } else {
                 // Paths are not given so we given so we can not regroup by path
-                // let's assume that each path refer to a single resource or single resource instances.
+                // let's assume that each path refer to a single resource or single resource
+                // instances.
                 LwM2mSenMLResolver resolver = new LwM2mSenMLResolver();
                 for (SenMLRecord record : pack.getRecords()) {
                     LwM2mResolvedSenMLRecord resolvedRecord = resolver.resolve(record);
@@ -201,18 +207,75 @@ public class LwM2mNodeSenMLDecoder implements TimestampedNodeDecoder, MultiNodeD
             TimestampedLwM2mNodes.Builder nodes = TimestampedLwM2mNodes.builder();
 
             LwM2mSenMLResolver resolver = new LwM2mSenMLResolver();
+            String prefix = null;
             for (SenMLRecord record : pack.getRecords()) {
+                String baseNameBeforePrefixCheck = record.getBaseName();
+                if (baseNameBeforePrefixCheck != null && hasPrefix(baseNameBeforePrefixCheck, model)) {
+                    String[] seperatedBaseName = extractStringsIfTrue(baseNameBeforePrefixCheck);
+                    prefix = seperatedBaseName[0];
+                    String baseNameAfterPrefixCheck = seperatedBaseName[1];
+                    record.setBaseName(baseNameAfterPrefixCheck);
+                }
                 LwM2mResolvedSenMLRecord resolvedRecord = resolver.resolve(record);
                 LwM2mPath path = resolvedRecord.getPath();
                 LwM2mNode node = parseRecords(Arrays.asList(resolvedRecord), path, model,
                         DefaultLwM2mDecoder.nodeClassFromPath(path));
                 nodes.put(TimestampUtil.fromSeconds(resolvedRecord.getTimeStamp()), path, node);
             }
-
+            nodes.putPrefix(prefix);
             return nodes.build();
         } catch (SenMLException | IllegalArgumentException e) {
             String hexValue = content != null ? Hex.encodeHexString(content) : "";
             throw new CodecException(e, "Unable to decode nodes : %s", hexValue, e);
+        }
+    }
+
+    /**
+     * check if baseName contains a Lwm2m prefix.
+     */
+    private boolean hasPrefix(String baseName, LwM2mModel model) {
+        String strippedString = baseName.replaceAll("^/+", "").replaceAll("/+$", "");
+
+        // Count slashes in the middle
+        int middleSlashCount = strippedString.length() - strippedString.replace("/", "").length();
+
+        // if slash count is greater than 2, check if the first entery in baseName is an objectID or prefix
+        if (middleSlashCount > 2) {
+            String[] result = extractStringsIfTrue(baseName);
+            try {
+                int firstEntry = Integer.parseInt(result[0]);
+                // return true if first entry is not on the client object model (first entry is a prefix)
+                return model.getObjectModel(firstEntry) == null;
+            } catch (NumberFormatException e) {
+                // If the first entry is not a number, return true
+                return true;
+            }
+        }
+
+        // Return false if the count is not greater than 2
+        return false;
+    }
+    // }
+
+    private String[] extractStringsIfTrue(String baseName) {
+        // Define a regular expression pattern for the desired format
+        Pattern pattern = Pattern.compile("([^/]+)/(.*?)$");
+
+        // Remove leading and trailing slashes
+        String trimmedInput = baseName.replaceAll("^/|/$", "");
+
+        // Create a matcher to find the pattern
+        Matcher matcher = pattern.matcher(trimmedInput);
+
+        // Check if the pattern is found
+        if (matcher.find()) {
+            // Extract the two strings
+            String string1 = matcher.group(1);
+            String string2 = matcher.group(2);
+            return new String[] { string1, string2 };
+        } else {
+            // Return an empty array or handle the case where the pattern is not found
+            return new String[] { "", "" };
         }
     }
 

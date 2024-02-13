@@ -92,20 +92,25 @@ public class InMemoryRegistrationStore implements RegistrationStore, Startable, 
 
             Registration registrationRemoved = regsByEp.put(registration.getEndpoint(), registration);
             regsByRegId.put(registration.getId(), registration);
-            regsByIdentity.put(registration.getClientTransportData().getIdentity(), registration);
-            // If a registration is already associated to this address we don't care as we only want to keep the most
-            // recent binding.
-            regsByAddr.put(registration.getSocketAddress(), registration);
+            Boolean hasRootpath = registration.getRootPath() == null
+                    || registration.getRootPath().replace("/", "").isEmpty();
+            if (hasRootpath) {
+                regsByIdentity.put(registration.getClientTransportData().getIdentity(), registration);
+                // If a registration is already associated to this address we don't care as we only want to keep the
+                // most
+                // recent binding.
+                regsByAddr.put(registration.getSocketAddress(), registration);
+            }
             if (registrationRemoved != null) {
                 Collection<Observation> observationsRemoved = unsafeRemoveAllObservations(registrationRemoved.getId());
-                if (!registrationRemoved.getSocketAddress().equals(registration.getSocketAddress())) {
+                if (!registrationRemoved.getSocketAddress().equals(registration.getSocketAddress()) && !hasRootpath) {
                     removeFromMap(regsByAddr, registrationRemoved.getSocketAddress(), registrationRemoved);
                 }
                 if (!registrationRemoved.getId().equals(registration.getId())) {
                     removeFromMap(regsByRegId, registrationRemoved.getId(), registrationRemoved);
                 }
                 if (!registrationRemoved.getClientTransportData().getIdentity()
-                        .equals(registration.getClientTransportData().getIdentity())) {
+                        .equals(registration.getClientTransportData().getIdentity()) && !hasRootpath) {
                     removeFromMap(regsByIdentity, registrationRemoved.getClientTransportData().getIdentity(),
                             registrationRemoved);
                 }

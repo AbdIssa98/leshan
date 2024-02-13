@@ -15,6 +15,9 @@
  *******************************************************************************/
 package org.eclipse.leshan.server.profile;
 
+import java.util.Arrays;
+import java.util.List;
+
 import org.eclipse.leshan.core.model.LwM2mModel;
 import org.eclipse.leshan.core.peer.LwM2mIdentity;
 import org.eclipse.leshan.server.model.LwM2mModelProvider;
@@ -34,11 +37,40 @@ public class DefaultClientProfileProvider implements ClientProfileProvider {
     @Override
     public ClientProfile getProfile(LwM2mIdentity identity) {
         Registration registration = registrationStore.getRegistrationByIdentity(identity);
+
         if (registration != null) {
             LwM2mModel model = modelProvider.getObjectModel(registration);
             return new ClientProfile(registration, model);
         } else
             return null;
+    }
+
+    @Override
+    public ClientProfile getProfile(LwM2mIdentity parentIdentity, String prefix) {
+        ClientProfile parentProfile = getProfile(parentIdentity);
+        if (prefix != null) {
+            Registration parentReg = parentProfile.getRegistration();
+            // get child devices associated to the parent registration
+            String childDeviceEpString = parentReg.getAdditionalRegistrationAttributes()
+                    .get("minion_child_endpointnames");
+            // Split the input string using ","
+            String[] stringArray = childDeviceEpString.split(",");
+
+            // Convert the array to a List
+            List<String> childDevicesEndpointList = Arrays.asList(stringArray);
+
+            for (String childDeviceEndPoint : childDevicesEndpointList) {
+                Registration childDeviceRegistration = registrationStore.getRegistrationByEndpoint(childDeviceEndPoint);
+                if (childDeviceRegistration.getRootPath().replace("/", "").equals(prefix)) {
+                    LwM2mModel model = modelProvider.getObjectModel(childDeviceRegistration);
+                    return new ClientProfile(childDeviceRegistration, model);
+                }
+            }
+
+            return null;
+        }
+        // if there was no prefix then the parent profile is returned
+        return parentProfile;
     }
 
 }
