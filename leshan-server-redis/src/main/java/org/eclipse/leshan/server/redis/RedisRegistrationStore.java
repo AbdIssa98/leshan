@@ -231,19 +231,23 @@ public class RedisRegistrationStore implements RegistrationStore, Startable, Sto
                 addOrUpdateExpiration(j, updatedRegistration);
 
                 // Update secondary index :
-                // If registration is already associated to this address we don't care as we only want to keep the most
+                // If registration is already associated to this address we don't care as we
+                // only want to keep the most
                 // recent binding.
-                byte[] addr_idx = toRegAddrKey(updatedRegistration.getSocketAddress());
-                j.set(addr_idx, updatedRegistration.getEndpoint().getBytes(UTF_8));
-                if (!r.getSocketAddress().equals(updatedRegistration.getSocketAddress())) {
-                    removeAddrIndex(j, r);
-                }
-                // update secondary index :
-                byte[] identity_idx = toRegIdentityKey(updatedRegistration.getClientTransportData().getIdentity());
-                j.set(identity_idx, updatedRegistration.getEndpoint().getBytes(UTF_8));
-                if (!r.getClientTransportData().getIdentity()
-                        .equals(updatedRegistration.getClientTransportData().getIdentity())) {
-                    removeIdentityIndex(j, r);
+                if (updatedRegistration.getRootPath() == null
+                        || updatedRegistration.getRootPath().replace("/", "").isEmpty()) {
+                    byte[] addr_idx = toRegAddrKey(updatedRegistration.getSocketAddress());
+                    j.set(addr_idx, updatedRegistration.getEndpoint().getBytes(UTF_8));
+                    if (!r.getSocketAddress().equals(updatedRegistration.getSocketAddress())) {
+                        removeAddrIndex(j, r);
+                    }
+                    // update secondary index :
+                    byte[] identity_idx = toRegIdentityKey(updatedRegistration.getClientTransportData().getIdentity());
+                    j.set(identity_idx, updatedRegistration.getEndpoint().getBytes(UTF_8));
+                    if (!r.getClientTransportData().getIdentity()
+                            .equals(updatedRegistration.getClientTransportData().getIdentity())) {
+                        removeIdentityIndex(j, r);
+                    }
                 }
 
                 return new UpdatedRegistration(r, updatedRegistration);
@@ -435,7 +439,8 @@ public class RedisRegistrationStore implements RegistrationStore, Startable, Sto
             Transaction transaction = j.multi();
             transaction.del(indexKey);
             transaction.exec();
-            // if transaction failed this is not an issue as the index is probably reused and we don't need to
+            // if transaction failed this is not an issue as the index is probably reused
+            // and we don't need to
             // delete it anymore.
         } else {
             // the key must not be deleted.
@@ -781,7 +786,9 @@ public class RedisRegistrationStore implements RegistrationStore, Startable, Sto
         private String observationTokensByRegistrationIdPrefix;
         private String endpointExpirationKey;
 
-        /** Time in seconds between 2 cleaning tasks (used to remove expired registration) */
+        /**
+         * Time in seconds between 2 cleaning tasks (used to remove expired registration)
+         */
         private long cleanPeriod;
         private int cleanLimit;
         /** extra time for registration lifetime in seconds */

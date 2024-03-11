@@ -60,7 +60,7 @@ public class SendResource extends LwM2mCoapResource {
         Request coapRequest = exchange.advanced().getRequest();
         IpPeer sender = getForeignPeerIdentity(exchange.advanced(), coapRequest);
         String payloadString = new String(coapRequest.getPayload());
-        LOGGER.debug("coap send request received. paylod: [{}] ", payloadString);
+        LOGGER.debug("coap send request received. paylod: [{}] ", CBORObject.DecodeFromBytes(coapRequest.getPayload()));
         ContentFormat contentFormat = ContentFormat.fromCode(exchange.getRequestOptions().getContentFormat());
         String prefix;
         if (contentFormat == ContentFormat.SENML_CBOR) {
@@ -79,7 +79,7 @@ public class SendResource extends LwM2mCoapResource {
             exchange.respond(ResponseCode.BAD_REQUEST, "no registration found");
             return;
         }
-        LOGGER.debug("the extracted registration belongs to the end point:", clientProfile.getEndpoint());
+        LOGGER.debug("the extracted registration belongs to the end point: [{}]", clientProfile.getEndpoint());
 
         try {
             // Decode payload

@@ -222,6 +222,7 @@ public class LwM2mNodeSenMLDecoder implements TimestampedNodeDecoder, MultiNodeD
                         DefaultLwM2mDecoder.nodeClassFromPath(path));
                 nodes.put(TimestampUtil.fromSeconds(resolvedRecord.getTimeStamp()), path, node);
             }
+            LOG.debug("the extracted prefix in node decoder is: [{}]", prefix);
             nodes.putPrefix(prefix);
             return nodes.build();
         } catch (SenMLException | IllegalArgumentException e) {
@@ -238,13 +239,15 @@ public class LwM2mNodeSenMLDecoder implements TimestampedNodeDecoder, MultiNodeD
 
         // Count slashes in the middle
         int middleSlashCount = strippedString.length() - strippedString.replace("/", "").length();
-
-        // if slash count is greater than 2, check if the first entery in baseName is an objectID or prefix
-        if (middleSlashCount > 2) {
+        LOG.debug("base name is: [{}] ", baseName);
+        // if slash count is greater than 2, check if the first entery in baseName is an
+        // objectID or prefix
+        if (middleSlashCount >= 2) {
             String[] result = extractStringsIfTrue(baseName);
             try {
                 int firstEntry = Integer.parseInt(result[0]);
-                // return true if first entry is not on the client object model (first entry is a prefix)
+                // return true if first entry is not on the client object model (first entry is
+                // a prefix)
                 return model.getObjectModel(firstEntry) == null;
             } catch (NumberFormatException e) {
                 // If the first entry is not a number, return true
@@ -272,6 +275,9 @@ public class LwM2mNodeSenMLDecoder implements TimestampedNodeDecoder, MultiNodeD
             // Extract the two strings
             String string1 = matcher.group(1);
             String string2 = matcher.group(2);
+            if (string2.charAt(string2.length() - 1) != '/') {
+                string2 = string2 + "/";
+            }
             return new String[] { string1, string2 };
         } else {
             // Return an empty array or handle the case where the pattern is not found

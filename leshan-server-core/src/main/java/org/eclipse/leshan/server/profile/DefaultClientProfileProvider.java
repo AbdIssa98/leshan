@@ -23,11 +23,14 @@ import org.eclipse.leshan.core.peer.LwM2mIdentity;
 import org.eclipse.leshan.server.model.LwM2mModelProvider;
 import org.eclipse.leshan.server.registration.Registration;
 import org.eclipse.leshan.server.registration.RegistrationStore;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class DefaultClientProfileProvider implements ClientProfileProvider {
 
     private final RegistrationStore registrationStore;
     private final LwM2mModelProvider modelProvider;
+    private final static Logger LOG = LoggerFactory.getLogger(DefaultClientProfileProvider.class);
 
     public DefaultClientProfileProvider(RegistrationStore registrationStore, LwM2mModelProvider modelProvider) {
         this.registrationStore = registrationStore;
@@ -48,11 +51,15 @@ public class DefaultClientProfileProvider implements ClientProfileProvider {
     @Override
     public ClientProfile getProfile(LwM2mIdentity parentIdentity, String prefix) {
         ClientProfile parentProfile = getProfile(parentIdentity);
+        LOG.debug("The prefix is: [{}]", prefix);
         if (prefix != null) {
             Registration parentReg = parentProfile.getRegistration();
+            LOG.debug("the end point of the retrieved registration is (should be parent): [{}]",
+                    parentReg.getEndpoint());
             // get child devices associated to the parent registration
             String childDeviceEpString = parentReg.getAdditionalRegistrationAttributes()
                     .get("minion_child_endpointnames");
+            LOG.debug("the child endpoints attriubute has the value: [{}]", childDeviceEpString);
             // Split the input string using ","
             String[] stringArray = childDeviceEpString.split(",");
 
@@ -63,6 +70,8 @@ public class DefaultClientProfileProvider implements ClientProfileProvider {
                 Registration childDeviceRegistration = registrationStore.getRegistrationByEndpoint(childDeviceEndPoint);
                 if (childDeviceRegistration.getRootPath().replace("/", "").equals(prefix)) {
                     LwM2mModel model = modelProvider.getObjectModel(childDeviceRegistration);
+                    LOG.debug("child device registration in client profile function:",
+                            childDeviceRegistration.getEndpoint());
                     return new ClientProfile(childDeviceRegistration, model);
                 }
             }
